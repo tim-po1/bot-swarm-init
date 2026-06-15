@@ -25,7 +25,28 @@ set -euo pipefail
 # -------------------------------------------------------------------------
 SWARM_USER="${SWARM_USER:-${USER:-$(id -un)}}"
 SWARM_HOME="${SWARM_HOME:-$HOME/bot-swarm}"
-INIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Compute INIT_DIR robustly. Two modes:
+#   (a) cloned repo + ./init.sh: BASH_SOURCE is set; INIT_DIR is the repo root.
+#   (b) curl -sL ... | bash: BASH_SOURCE unset under `set -u`. In that mode
+#       the vendored payload (vendor/bot-swarm.tar.gz) isn't accessible
+#       through stdin, so we clone the repo and re-exec from there.
+INIT_DIR=""
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+  INIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || INIT_DIR=""
+fi
+if [[ -z "$INIT_DIR" || ! -f "$INIT_DIR/init.sh" || ! -d "$INIT_DIR/vendor" ]]; then
+  # curl|bash mode: clone (or refresh) bot-swarm-init locally and re-exec.
+  CLONE_DIR="${SWARM_INIT_CLONE:-$HOME/.bot-swarm-init}"
+  if [[ ! -d "$CLONE_DIR/.git" ]]; then
+    echo "[swarm-init] curl|bash mode — cloning bot-swarm-init to $CLONE_DIR"
+    git clone --depth=1 https://github.com/tim-po1/bot-swarm-init.git "$CLONE_DIR"
+  else
+    echo "[swarm-init] refreshing existing $CLONE_DIR"
+    ( cd "$CLONE_DIR" && git pull --rebase --autostash --quiet ) || true
+  fi
+  exec bash "$CLONE_DIR/init.sh" "$@"
+fi
 LOG_PREFIX="[swarm-init]"
 
 log()  { printf "%s %s\n" "$LOG_PREFIX" "$*"; }
