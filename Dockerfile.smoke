@@ -1,0 +1,20 @@
+# Fresh-Ubuntu smoke-test target for init.sh.
+# Mirrors the constraints of a real VPS: non-root user, sudo gated by password,
+# minimal base packages. Anything missing here that init.sh assumes = a real bug.
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+      curl ca-certificates git tar gzip xz-utils \
+      sudo procps cron \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user with sudo but no NOPASSWD; init.sh must work without sudo.
+RUN useradd -m -s /bin/bash claude && \
+    echo 'claude ALL=(ALL) ALL' > /etc/sudoers.d/claude
+
+USER claude
+WORKDIR /home/claude
+
+# init.sh is mounted at /home/claude/init by docker run -v
+CMD ["/bin/bash"]

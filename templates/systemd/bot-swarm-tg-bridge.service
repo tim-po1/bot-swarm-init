@@ -1,0 +1,19 @@
+[Unit]
+Description=Bot-swarm Telegram bridge
+After=network-online.target bot-swarm-worker.service
+Wants=bot-swarm-worker.service
+
+[Service]
+Type=simple
+# Configure per project: this default points at a planlink-style bridge.
+# Override via drop-in or copy this unit per-project.
+WorkingDirectory=__SWARM_HOME__/data/planlink/telegram
+EnvironmentFile=__SWARM_HOME__/data/planlink/telegram/.env
+ExecStart=%h/bin/with-tg-proxy.sh /usr/bin/python3 __SWARM_HOME__/data/planlink/telegram/bridge.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:__SWARM_HOME__/data/planlink/telegram/bridge.log
+StandardError=append:__SWARM_HOME__/data/planlink/telegram/bridge.log
+
+[Install]
+WantedBy=default.target

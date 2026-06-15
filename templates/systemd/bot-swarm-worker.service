@@ -1,0 +1,17 @@
+[Unit]
+Description=Bot-swarm worker socket daemon
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__SWARM_HOME__
+Environment=BOT_SQUAD_HOME=__SWARM_HOME__
+Environment=BOT_SQUAD_DATA=__SWARM_HOME__/data
+ExecStart=__SWARM_HOME__/worker/.venv/bin/python -m bot_squad_worker --config __SWARM_HOME__/config
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:__SWARM_HOME__/data/worker.log
+StandardError=append:__SWARM_HOME__/data/worker.log
+
+[Install]
+WantedBy=default.target
